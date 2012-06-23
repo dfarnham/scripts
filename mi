@@ -1,0 +1,268 @@
+#!/usr/bin/env perl
+#
+# Music Info
+#
+# Utility to extract tag information from various music file formats or
+# display a pretty-printed album style summary from a set of files
+#
+# Currently recognized formats mp3, m4a, ogg, flac, wma
+#
+# Requirements: CPAN modules (MP3::Info, MP4::Info, Audio::WMA)
+#               External programs (ogginfo, metaflac)
+
+use strict;
+use FileHandle;
+use MP3::Info qw(:genres);
+use MP4::Info;
+use Audio::WMA;
+use Getopt::Long qw(:config auto_abbrev);
+use open qw/:std :encoding(UTF-8)/;
+use feature 'unicode_strings';
+
+my ($optSummary, $optHelp);
+GetOptions('summary' => \$optSummary,
+           'help'    => \$optHelp) or usage();
+usage() if $optHelp;
+
+MP3::Info->use_winamp_genres();
+
+my (@songInfo, $artist, $album, $year, $maxTitleLen, $totalSeconds, $maxMin);
+my $musicFileRE = qr/\.(?:mp3|m4a|ogg|flac|wma)$/;
+
+foreach my $arg (@ARGV) {
+    next if (-f $arg && $arg !~ /$musicFileRE/);
+    my @files;
+    if (-d $arg) {
+        opendir(my $dh, $arg) || die "Can't opendir $arg: $!";
+        @files = map { $arg . '/' . $_ } grep { /$musicFileRE/ } readdir($dh);
+        closedir($dh);
+    } else {
+        push (@files, $arg);
+    }
+
+    foreach my $mfile (sort @files) {
+        my $musicFile = getSongInfo($mfile);
+        if ($optSummary) {
+            push(@songInfo, $musicFile);
+            $artist = $musicFile->{'artist'} unless $artist;
+            $album = $musicFile->{'album'} unless $album;
+            $year = $musicFile->{'year'} unless $year;
+            $maxTitleLen = length($musicFile->{'title'}) if length($musicFile->{'title'}) > $maxTitleLen;
+            (my $tm = $musicFile->{'time'}) =~ s/^0//;
+            $totalSeconds += 60*(split(/:/,$tm))[0] + (split(/:/,$tm))[1];
+            (my $min = $musicFile->{'time'}) =~ s/:.*//;
+            $maxMin = $min if $min > $maxMin;
+        } else {
+            $musicFile->{'time'} =~ s/^0//;
+            print "title:    ", $musicFile->{'title'},    "\n"  if $musicFile->{'title'};
+            print "artist:   ", $musicFile->{'artist'},   "\n"  if $musicFile->{'artist'};
+            print "album:    ", $musicFile->{'album'},    "\n"  if $musicFile->{'album'};
+            print "genre:    ", $musicFile->{'genre'},    "\n"  if $musicFile->{'genre'};
+            print "year:     ", $musicFile->{'year'},     "\n"  if $musicFile->{'year'};
+            print "track:    ", $musicFile->{'tracknum'}, "\n"  if $musicFile->{'tracknum'};
+            print "time:     ", $musicFile->{'time'},     "\n"  if $musicFile->{'time'};
+            print "vbr:      ", $musicFile->{'vbr'},      "\n"  if $musicFile->{'vbr'};
+            print "encoder:  ", $musicFile->{'encoder'},  "\n"  if $musicFile->{'encoder'};
+            print "bitrate:  ", $musicFile->{'bitrate'},  "\n"  if $musicFile->{'bitrate'};
+            print "apid:     ", $musicFile->{'APID'},     "\n"  if $musicFile->{'APID'};
+            print "comment:  ", $musicFile->{'comment'},  "\n"  if $musicFile->{'comment'};
+            print "\n";
+        }
+    }
+}
+
+if ($optSummary && @songInfo > 0) {
+    #
+    # Calculate overall width to center title within.
+    # Width = track # + maxTitleLen + " ... " + time
+    #
+    my $fieldLen = length("00. ") + $maxTitleLen + length(" ... ") + length("00:00");
+    print ' ' x (($fieldLen - length($artist)) / 2), "$artist\n";
+    print ' ' x (($fieldLen - length("$album ($year)")) / 2), "$album ($year)\n";
+
+    my $playingTime = "Playing Time: " . int($totalSeconds/60) . ':' . sprintf("%02d",$totalSeconds%60);
+    print ' ' x (($fieldLen - length($playingTime)) / 2), "$playingTime\n\n";
+
+    foreach my $musicFile (@songInfo) {
+        my $song = $musicFile->{'title'} . ' ' . '.' x ($maxTitleLen - length($musicFile->{'title'})) . '...';
+        my $tm = $musicFile->{'time'};
+        if ($maxMin < 10) {
+            $tm =~ s/^0(\d)/$1/;
+        } else {
+            $tm =~ s/^0/ /;
+        }
+        printf("%2d. %s %s %s\n", $musicFile->{'tracknum'}, $song, $tm);
+    }
+}
+
+
+sub getSongInfo {
+    my $file = shift;
+    my $musicFile;
+
+    if ($file =~ /\.mp3$/) {
+        my $mp3 = new MP3::Info($file);
+        $musicFile->{'type'} = 'mp3';
+        $musicFile->{'artist'} = $mp3->artist;
+        $musicFile->{'album'} = $mp3->album;
+        $musicFile->{'title'} = $mp3->title;
+        $musicFile->{'genre'} = $mp3->genre;
+        $musicFile->{'year'} = $mp3->year;
+        $musicFile->{'tracknum'} = $mp3->tracknum;
+        $musicFile->{'time'} = $mp3->time;
+        $musicFile->{'vbr'} = $mp3->vbr ? "yes" : "no";
+        $musicFile->{'bitrate'} = $mp3->bitrate;
+        $musicFile->{'comment'} = $mp3->comment;
+    } elsif ($file =~ /\.m4a$/) {
+        my $m4a = new MP4::Info($file);
+        $musicFile->{'type'} = 'm4a';
+        $musicFile->{'artist'} = $m4a->artist;
+        $musicFile->{'album'} = $m4a->album;
+        $musicFile->{'title'} = $m4a->title;
+        $musicFile->{'genre'} = $m4a->genre;
+        $musicFile->{'year'} = $m4a->year;
+        $musicFile->{'tracknum'} = $m4a->{'TRKN'}[0];
+        if ($m4a->{'TRKN'}[1]) {
+            $musicFile->{'tracknum'} .= "/" . $m4a->{'TRKN'}[1];
+        }
+        $musicFile->{'time'} = $m4a->time;
+        $musicFile->{'bitrate'} = $m4a->bitrate;
+        $musicFile->{'comment'} = $m4a->comment;
+        $musicFile->{'encoder'} = $m4a->too;
+        $musicFile->{'APID'} = $m4a->{'APID'};
+    } elsif ($file =~ /\.wma$/) {
+        my $wma = new Audio::WMA($file);
+        my $info = $wma->info();
+        my $tags = $wma->tags();
+        $musicFile->{'type'} = 'wma';
+        $musicFile->{'artist'} = $tags->{'ALBUMARTIST'};
+        $musicFile->{'album'} = $tags->{'ALBUMTITLE'};
+        $musicFile->{'title'} = $tags->{'TITLE'};
+        $musicFile->{'genre'} = $tags->{'GENRE'};
+        $musicFile->{'year'} = $tags->{'YEAR'};
+        $musicFile->{'tracknum'} = $tags->{'TRACKNUMBER'};
+        $musicFile->{'time'} = sprintf("%02d:%02d", $info->{'playtime_seconds'} / 60, $info->{'playtime_seconds'} % 60);
+        $musicFile->{'vbr'} = $tags->{'VBR'} ? "yes" : "no";
+        $musicFile->{'bitrate'} = int($info->{'bitrate'} / 1024);
+    } elsif ($file =~ /\.ogg$/) {
+        my $fh = new FileHandle("ogginfo " . quotemeta($file) . "|");
+        binmode $fh, ":encoding(UTF-8)";
+        $musicFile->{'type'} = 'ogg';
+        while (my $line = $fh->getline()) {
+            chomp $line;
+            if ($line =~ /=/) {
+                $line =~ s/^\s+//;
+                my($key, $value) = split(/=/, $line);
+                $key = 'tracknum' if $key =~ /^tracknu/i;
+                $key = 'year' if $key =~/^date/i;
+                $musicFile->{lc($key)} = $value;
+            } elsif ($line =~ /Playback length: ([^.]*)/) {
+                ($musicFile->{'time'} = $1) =~ s/[ms]//g;
+            } elsif ($line =~ /Average bitrate: ([^.]*)/) {
+                $musicFile->{'bitrate'} = $1;
+            }
+        }
+        $fh->close();
+    } elsif ($file =~ /\.flac$/) {
+        my $sampleRate = 0;
+        my $totalSamples = 0;
+        my $bitsPerSample = 0;
+
+        $musicFile->{'type'} = 'flac';
+
+        my $fh = new FileHandle("metaflac --list --block-type=VORBIS_COMMENT " . quotemeta($file) . "|");
+        binmode $fh, ":encoding(UTF-8)";
+        while (my $line = $fh->getline()) {
+            chomp $line;
+            if ($line =~ /=/) {
+                $line =~ s/^\s+comment\[\d+\]:\s+//;
+                my($key, $value) = split(/=/, $line);
+                $key = 'year' if $key =~ /^date/i;
+                $key = 'tracknum' if $key =~ /^tracknu/i;
+                $key = 'tracktotal' if $key =~ /^tracktotal/i;
+                $key = 'encoded-by' if $key =~ /^encoded-by/i;
+                $musicFile->{lc($key)} = $value;
+            }
+        }
+        $fh->close();
+
+        my $fh = new FileHandle("metaflac --list --block-type=STREAMINFO " . quotemeta($file) . "|");
+        binmode $fh, ":encoding(UTF-8)";
+        while (my $line = $fh->getline()) {
+            chomp $line;
+            if ($line =~ /sample_rate: (\d+)/) {
+                $sampleRate = $1;
+            } elsif ($line =~ /total samples: (\d+)/) {
+                $totalSamples = $1;
+            } elsif ($line =~ /bits-per-sample: (\d+)/) {
+                $bitsPerSample = $1;
+            }
+        }
+        $fh->close();
+
+        if ($sampleRate != 0 && $totalSamples != 0) {
+            my $min = $totalSamples / $sampleRate / 60;
+            my $sec = ($min - int($min)) * 60;
+            $musicFile->{'time'} = sprintf("%02d:%02d", $min, $sec);
+        }
+
+        if ($sampleRate != 0 && $bitsPerSample != 0) {
+            $musicFile->{'bitrate'} = "$bitsPerSample bits per sample @ $sampleRate Hz";
+        }
+        
+        if ($musicFile->{'tracktotal'}) {
+            $musicFile->{'tracknum'} .= "/" . $musicFile->{'tracktotal'};
+        }
+
+        if ($musicFile->{'encoded-by'}) {
+            $musicFile->{'comment'} = $musicFile->{'encoded-by'};
+        }
+
+    }
+
+    return $musicFile;
+}
+
+
+sub usage {
+    my $bname = substr($0, rindex($0, "/") + 1);
+    print STDERR "$bname [-summary] file1 [file2 ...]\n\n";
+    print STDERR << 'EndOfUsage'
+Utility to extract tag information from various music file formats or
+display a pretty-printed album style summary from a set of files
+
+Currently recognized formats mp3, m4a, ogg, flac, wma
+
+Requirements: CPAN modules (MP3::Info, MP4::Info, Audio::WMA)
+              External programs (ogginfo, metaflac)
+
+Examples:
+% mi '01. La Llorona.mp3'
+title:    La Llorona
+artist:   Tim "Too Slim" Langford
+album:    Broken Halo
+genre:    Blues
+year:     2012
+track:    01/11
+time:     2:58
+vbr:      yes
+bitrate:  242
+
+% mi --summary *.mp3
+     Tim "Too Slim" Langford
+        Broken Halo (2012)
+       Playing Time: 41:23
+
+ 1. La Llorona ............. 2:58 
+ 2. Three Chords ........... 5:02 
+ 3. Shaking A Cup .......... 3:32 
+ 4. You Hide It Well ....... 3:05 
+ 5. Princeville Serenade ... 2:13 
+ 6. 40 Watt Bulb ........... 4:18 
+ 7. Broken Halo ............ 3:22 
+ 8. North Dakota Girl ...... 4:25 
+ 9. Dollar Girl ............ 5:45 
+10. Long Tail Black Cat .... 3:40 
+11. Gracie ................. 3:03 
+EndOfUsage
+}
