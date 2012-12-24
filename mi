@@ -122,7 +122,7 @@ sub getSongInfo {
         $musicFile->{'version'}  = $info->{'id3_version'} if (exists $info->{'id3_version'});
         $musicFile->{'bitrate'}  = int($info->{'bitrate'} / 1000) if (exists $info->{'bitrate'});
         $musicFile->{'vbr'}      = (exists $info->{'vbr'} && $info->{'vbr'} == 1) ? "yes" : "no";
-        $musicFile->{'comment'}  = join(" " , map { @$_ } @{$tags->{'COMM'}}) if (exists $tags->{'COMM'});
+        $musicFile->{'comment'}  = join(" " , map { ref $_ eq 'ARRAY' ? @$_ : $_ } @{$tags->{'COMM'}}) if (exists $tags->{'COMM'});
     } elsif ($file =~ /\.m4a$/) {
         $musicFile->{'type'}     = 'm4a';
         $musicFile->{'artist'}   = $tags->{'ART'}  if (exists $tags->{'ART'});
