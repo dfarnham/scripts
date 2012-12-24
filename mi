@@ -7,14 +7,10 @@
 #
 # Currently recognized formats mp3, m4a, ogg, flac, wma
 #
-# Requirements: CPAN modules (MP3::Info, MP4::Info, Audio::WMA)
-#               External programs (ogginfo, metaflac)
+# Requirements: CPAN module Audio::Scan
 
 use strict;
-use FileHandle;
-use MP3::Info qw(:genres);
-use MP4::Info;
-use Audio::WMA;
+use Audio::Scan;
 use Getopt::Long qw(:config auto_abbrev);
 use open qw/:std :encoding(UTF-8)/;
 use feature 'unicode_strings';
@@ -24,7 +20,8 @@ GetOptions('summary' => \$optSummary,
            'help'    => \$optHelp) or usage();
 usage() if $optHelp;
 
-MP3::Info->use_winamp_genres();
+# Skip embedded artwork
+$ENV{AUDIO_SCAN_NO_ARTWORK} = 1;
 
 my (@songInfo, $artist, $album, $year, $maxTitleLen, $totalSeconds, $maxMin);
 my $musicFileRE = qr/\.(?:mp3|m4a|ogg|flac|wma)$/;
@@ -33,7 +30,7 @@ foreach my $arg (@ARGV) {
     next if (-f $arg && $arg !~ /$musicFileRE/);
     my @files;
     if (-d $arg) {
-        opendir(my $dh, $arg) || die "Can't opendir $arg: $!";
+        opendir(my $dh, $arg) or die "Can't opendir $arg: $!";
         @files = map { $arg . '/' . $_ } grep { /$musicFileRE/ } readdir($dh);
         closedir($dh);
     } else {
@@ -63,8 +60,9 @@ foreach my $arg (@ARGV) {
             print "time:     ", $musicFile->{'time'},     "\n"  if $musicFile->{'time'};
             print "vbr:      ", $musicFile->{'vbr'},      "\n"  if $musicFile->{'vbr'};
             print "encoder:  ", $musicFile->{'encoder'},  "\n"  if $musicFile->{'encoder'};
+            print "version:  ", $musicFile->{'version'},  "\n"  if $musicFile->{'version'};
             print "bitrate:  ", $musicFile->{'bitrate'},  "\n"  if $musicFile->{'bitrate'};
-            print "apid:     ", $musicFile->{'APID'},     "\n"  if $musicFile->{'APID'};
+            print "apid:     ", $musicFile->{'apid'},     "\n"  if $musicFile->{'apid'};
             print "comment:  ", $musicFile->{'comment'},  "\n"  if $musicFile->{'comment'};
             print "\n";
         }
@@ -99,125 +97,85 @@ if ($optSummary && @songInfo > 0) {
 sub getSongInfo {
     my $file = shift;
     my $musicFile;
+    my $scan = Audio::Scan->scan($file);
+    my $tags = $scan->{'tags'};
+    my $info = $scan->{'info'};
+
+    if (exists $info->{'song_length_ms'}) {
+        my $sec = $info->{'song_length_ms'} / 1000;
+        $musicFile->{'time'} = sprintf("%02d:%02d", $sec / 60, $sec % 60);
+    }
 
     if ($file =~ /\.mp3$/) {
-        my $mp3 = new MP3::Info($file);
-        $musicFile->{'type'} = 'mp3';
-        $musicFile->{'artist'} = $mp3->artist;
-        $musicFile->{'album'} = $mp3->album;
-        $musicFile->{'title'} = $mp3->title;
-        $musicFile->{'genre'} = $mp3->genre;
-        $musicFile->{'year'} = $mp3->year;
-        $musicFile->{'tracknum'} = $mp3->tracknum;
-        $musicFile->{'time'} = $mp3->time;
-        $musicFile->{'vbr'} = $mp3->vbr ? "yes" : "no";
-        $musicFile->{'bitrate'} = $mp3->bitrate;
-        $musicFile->{'comment'} = $mp3->comment;
+        $musicFile->{'type'}     = 'mp3';
+        $musicFile->{'artist'}   = $tags->{'TPE1'} if (exists $tags->{'TPE1'});
+        $musicFile->{'album'}    = $tags->{'TALB'} if (exists $tags->{'TALB'});
+        $musicFile->{'title'}    = $tags->{'TIT2'} if (exists $tags->{'TIT2'});
+        $musicFile->{'genre'}    = $tags->{'TCON'} if (exists $tags->{'TCON'});
+        $musicFile->{'year'}     = $tags->{'TDRC'} if (exists $tags->{'TDRC'});
+        $musicFile->{'tracknum'} = $tags->{'TRCK'} if (exists $tags->{'TRCK'});
+        if (exists $tags->{'TENC'}) {
+            $musicFile->{'encoder'}  = $tags->{'TENC'};
+        } elsif (exists $info->{'lame_encoder_version'}) {
+            $musicFile->{'encoder'}  = $info->{'lame_encoder_version'};
+        }
+        $musicFile->{'version'}  = $info->{'id3_version'} if (exists $info->{'id3_version'});
+        $musicFile->{'bitrate'}  = int($info->{'bitrate'} / 1000) if (exists $info->{'bitrate'});
+        $musicFile->{'vbr'}      = (exists $info->{'vbr'} && $info->{'vbr'} == 1) ? "yes" : "no";
+        $musicFile->{'comment'}  = join(" " , map { @$_ } @{$tags->{'COMM'}}) if (exists $tags->{'COMM'});
     } elsif ($file =~ /\.m4a$/) {
-        my $m4a = new MP4::Info($file);
-        $musicFile->{'type'} = 'm4a';
-        $musicFile->{'artist'} = $m4a->artist;
-        $musicFile->{'album'} = $m4a->album;
-        $musicFile->{'title'} = $m4a->title;
-        $musicFile->{'genre'} = $m4a->genre;
-        $musicFile->{'year'} = $m4a->year;
-        $musicFile->{'tracknum'} = $m4a->{'TRKN'}[0];
-        if ($m4a->{'TRKN'}[1]) {
-            $musicFile->{'tracknum'} .= "/" . $m4a->{'TRKN'}[1];
+        $musicFile->{'type'}     = 'm4a';
+        $musicFile->{'artist'}   = $tags->{'ART'}  if (exists $tags->{'ART'});
+        $musicFile->{'album'}    = $tags->{'ALB'}  if (exists $tags->{'ALB'});
+        $musicFile->{'title'}    = $tags->{'NAM'}  if (exists $tags->{'NAM'});
+        if (exists $tags->{'DAY'}) {
+            ($musicFile->{'year'} = $tags->{'DAY'}) =~ s/^(\d{4}).*/$1/;
         }
-        $musicFile->{'time'} = $m4a->time;
-        $musicFile->{'bitrate'} = $m4a->bitrate;
-        $musicFile->{'comment'} = $m4a->comment;
-        $musicFile->{'encoder'} = $m4a->too;
-        $musicFile->{'APID'} = $m4a->{'APID'};
+        $musicFile->{'tracknum'} = $tags->{'TRKN'} if (exists $tags->{'TRKN'});
+        $musicFile->{'encoder'}  = $tags->{'TOO'}  if (exists $tags->{'TOO'});
+        $musicFile->{'apid'}     = $tags->{'APID'} if (exists $tags->{'APID'});
+        if (exists $tags->{'GNRE'}) {
+            $musicFile->{'genre'} = $tags->{'GNRE'};
+        } elsif (exists $tags->{'GEN'}) {
+            $musicFile->{'genre'} = $tags->{'GEN'};
+        }
+        if (exists $info->{'bitrate'}) {
+            $musicFile->{'bitrate'} = int($info->{'bitrate'} / 1000);
+        } elsif (exists $info->{'avg_bitrate'}) {
+            $musicFile->{'bitrate'} = int($info->{'avg_bitrate'} / 1000);
+        }
     } elsif ($file =~ /\.wma$/) {
-        my $wma = new Audio::WMA($file);
-        my $info = $wma->info();
-        my $tags = $wma->tags();
-        $musicFile->{'type'} = 'wma';
-        $musicFile->{'artist'} = $tags->{'ALBUMARTIST'};
-        $musicFile->{'album'} = $tags->{'ALBUMTITLE'};
-        $musicFile->{'title'} = $tags->{'TITLE'};
-        $musicFile->{'genre'} = $tags->{'GENRE'};
-        $musicFile->{'year'} = $tags->{'YEAR'};
-        $musicFile->{'tracknum'} = $tags->{'TRACKNUMBER'};
-        $musicFile->{'time'} = sprintf("%02d:%02d", $info->{'playtime_seconds'} / 60, $info->{'playtime_seconds'} % 60);
-        $musicFile->{'vbr'} = $tags->{'VBR'} ? "yes" : "no";
-        $musicFile->{'bitrate'} = int($info->{'bitrate'} / 1024);
+        $musicFile->{'type'}     = 'wma';
+        $musicFile->{'artist'}   = $tags->{'WM/AlbumArtist'} if (exists $tags->{'WM/AlbumArtist'});
+        $musicFile->{'album'}    = $tags->{'WM/AlbumTitle'}  if (exists $tags->{'WM/AlbumTitle'});
+        $musicFile->{'title'}    = $tags->{'Title'}          if (exists $tags->{'Title'});
+        $musicFile->{'genre'}    = $tags->{'WM/Genre'}       if (exists $tags->{'WM/Genre'});
+        $musicFile->{'year'}     = $tags->{'WM/Year'}        if (exists $tags->{'WM/Year'});
+        $musicFile->{'tracknum'} = $tags->{'WM/TrackNumber'} if (exists $tags->{'WM/TrackNumber'});
+        $musicFile->{'bitrate'}  = int($info->{'max_bitrate'} / 1000) if (exists $info->{'max_bitrate'});
     } elsif ($file =~ /\.ogg$/) {
-        my $fh = new FileHandle("ogginfo " . quotemeta($file) . "|");
-        binmode $fh, ":encoding(UTF-8)";
-        $musicFile->{'type'} = 'ogg';
-        while (my $line = $fh->getline()) {
-            chomp $line;
-            if ($line =~ /=/) {
-                $line =~ s/^\s+//;
-                my($key, $value) = split(/=/, $line);
-                $key = 'tracknum' if $key =~ /^tracknu/i;
-                $key = 'year' if $key =~/^date/i;
-                $musicFile->{lc($key)} = $value;
-            } elsif ($line =~ /Playback length: ([^.]*)/) {
-                ($musicFile->{'time'} = $1) =~ s/[ms]//g;
-            } elsif ($line =~ /Average bitrate: ([^.]*)/) {
-                $musicFile->{'bitrate'} = $1;
-            }
-        }
-        $fh->close();
+        $musicFile->{'type'}     = 'ogg';
+        $musicFile->{'artist'}   = $tags->{'ARTIST'}      if (exists $tags->{'ARTIST'});
+        $musicFile->{'album'}    = $tags->{'ALBUM'}       if (exists $tags->{'ALBUM'});
+        $musicFile->{'title'}    = $tags->{'TITLE'}       if (exists $tags->{'TITLE'});
+        $musicFile->{'year'}     = $tags->{'DATE'}        if (exists $tags->{'DATE'});
+        $musicFile->{'genre'}    = $tags->{'GENRE'}       if (exists $tags->{'GENRE'});
+        $musicFile->{'tracknum'} = $tags->{'TRACKNUMBER'} if (exists $tags->{'TRACKNUMBER'});
+        $musicFile->{'encoder'}  = $tags->{'VENDOR'}      if (exists $tags->{'VENDOR'});
+        $musicFile->{'bitrate'}  = int($info->{'bitrate_average'} / 1000) if (exists $info->{'bitrate_average'});
     } elsif ($file =~ /\.flac$/) {
-        my $sampleRate = 0;
-        my $totalSamples = 0;
-        my $bitsPerSample = 0;
-
-        $musicFile->{'type'} = 'flac';
-
-        my $fh = new FileHandle("metaflac --list --block-type=VORBIS_COMMENT " . quotemeta($file) . "|");
-        binmode $fh, ":encoding(UTF-8)";
-        while (my $line = $fh->getline()) {
-            chomp $line;
-            if ($line =~ /=/) {
-                $line =~ s/^\s+comment\[\d+\]:\s+//;
-                my($key, $value) = split(/=/, $line);
-                $key = 'year' if $key =~ /^date/i;
-                $key = 'tracknum' if $key =~ /^tracknu/i;
-                $key = 'tracktotal' if $key =~ /^tracktotal/i;
-                $key = 'encoded-by' if $key =~ /^encoded-by/i;
-                $musicFile->{lc($key)} = $value;
-            }
+        $musicFile->{'type'}     = 'flac';
+        $musicFile->{'artist'}   = $tags->{'ARTIST'}       if (exists $tags->{'ARTIST'});
+        $musicFile->{'album'}    = $tags->{'ALBUM'}        if (exists $tags->{'ALBUM'});
+        $musicFile->{'title'}    = $tags->{'TITLE'}        if (exists $tags->{'TITLE'});
+        $musicFile->{'year'}     = $tags->{'DATE'}         if (exists $tags->{'DATE'});
+        $musicFile->{'genre'}    = $tags->{'GENRE'}        if (exists $tags->{'GENRE'});
+        $musicFile->{'encoder'}  = $tags->{'ENCODED-BY'} if (exists $tags->{'ENCODED-BY'});
+        $musicFile->{'tracknum'} = $tags->{'TRACKNUMBER'}  if (exists $tags->{'TRACKNUMBER'});
+        $musicFile->{'tracknum'} .= "/" . $tags->{'TRACKTOTAL'} if (exists $tags->{'TRACKTOTAL'});
+        if (exists $info->{'bits_per_sample'} && exists $info->{'samplerate'}) {
+            $musicFile->{'bitrate'}  = $info->{'bits_per_sample'} . " bits per sample @ " . $info->{'samplerate'} . "Hz";
         }
-        $fh->close();
-
-        my $fh = new FileHandle("metaflac --list --block-type=STREAMINFO " . quotemeta($file) . "|");
-        binmode $fh, ":encoding(UTF-8)";
-        while (my $line = $fh->getline()) {
-            chomp $line;
-            if ($line =~ /sample_rate: (\d+)/) {
-                $sampleRate = $1;
-            } elsif ($line =~ /total samples: (\d+)/) {
-                $totalSamples = $1;
-            } elsif ($line =~ /bits-per-sample: (\d+)/) {
-                $bitsPerSample = $1;
-            }
-        }
-        $fh->close();
-
-        if ($sampleRate != 0 && $totalSamples != 0) {
-            my $min = $totalSamples / $sampleRate / 60;
-            my $sec = ($min - int($min)) * 60;
-            $musicFile->{'time'} = sprintf("%02d:%02d", $min, $sec);
-        }
-
-        if ($sampleRate != 0 && $bitsPerSample != 0) {
-            $musicFile->{'bitrate'} = "$bitsPerSample bits per sample @ $sampleRate Hz";
-        }
-        
-        if ($musicFile->{'tracktotal'}) {
-            $musicFile->{'tracknum'} .= "/" . $musicFile->{'tracktotal'};
-        }
-
-        if ($musicFile->{'encoded-by'}) {
-            $musicFile->{'comment'} = $musicFile->{'encoded-by'};
-        }
-
     }
 
     return $musicFile;
@@ -233,8 +191,7 @@ display a pretty-printed album style summary from a set of files
 
 Currently recognized formats mp3, m4a, ogg, flac, wma
 
-Requirements: CPAN modules (MP3::Info, MP4::Info, Audio::WMA)
-              External programs (ogginfo, metaflac)
+Requirements: CPAN module Audio::Scan
 
 Examples:
 % mi '01. La Llorona.mp3'
