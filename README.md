@@ -150,3 +150,87 @@ Examples:
 	cutcol.pl -col=. -outdelim=, -statfile=test.stats | cutcol.pl -delim=, -col=. -outdelim='\t' -
  ```
 
+## squeezeCommand -- Command Line Squeezebox Controller
+
+Basic command line control of a Slimserver Squeezebox (play, pause, power, info, list, etc.)
+
+Examples
+------------
+```
+squeezeboxCommand.pl [-player|-id] cmd [args]
+  cmd:
+    players                -- show information on known players
+    info                   -- show summary of the music library and players
+    add file|dir [...]     -- add content to the current playlist
+    pl(ay) file|dir [...]  -- clear current playlist, then add content
+    pa(use)                -- pause toggle
+    po(wer) [on|off]       -- power query and control
+    list                   -- show song/album/artist in the current playlist
+    n(ext) [-#|+#]         -- jump +/- in playlist, default is +1
+    v(olume) [-#|+#|#]     -- volume query, +/- adjust, or set
+    mi                     -- run external "mi" utility on the current music file
+    
+$ squeezeboxCommand.pl -list # current track is displayed in reverse video (not shown below)
++----------------------------+-------+----------+-------------------+
+| Track                      | Time  | Album    | Artist            |
++----------------------------+-------+----------+-------------------+
+| Restless                   |  3:35 | Restless | Eric Jerardi Band |
+| Easy To Love, Easy To Hate |  4:47 | Restless | Eric Jerardi Band |
+| Let It Ride                |  3:46 | Restless | Eric Jerardi Band |
+| Self Defense               |  5:09 | Restless | Eric Jerardi Band |
+| My Dog                     |  3:18 | Restless | Eric Jerardi Band |
+| Jail                       |  2:52 | Restless | Eric Jerardi Band |
+| Going Through The Motions  |  2:37 | Restless | Eric Jerardi Band |
+| Kaboom                     |  2:34 | Restless | Eric Jerardi Band |
+| L.A. Prelude               |  1:28 | Restless | Eric Jerardi Band |
+| L.A.                       |  5:38 | Restless | Eric Jerardi Band |
+| Get Back                   |  4:16 | Restless | Eric Jerardi Band |
+| Such A Crime               |  3:35 | Restless | Eric Jerardi Band |
+| Dent                       |  1:54 | Restless | Eric Jerardi Band |
+| Wish I Could               |  3:41 | Restless | Eric Jerardi Band |
++----------------------------+-------+----------+-------------------+
+
+$ squeezeboxCommand.pl -info
+Slimserver Version: 7.5.5
+
+Players:
+player index: 0
+player id:    00:01:02:03:04:05
+player ip:    192.168.36.14:61859
+player name:  Basement
+player model: squeezebox2
+
+player index: 1
+player id:    ab:cd:ef:01:02:03
+player ip:    192.168.36.15:46309
+player name:  Living Room
+player model: squeezebox
+
+Library:
+Artists: 2692
+Albums:  8426
+Songs:   103253
+
+Basement power is: on
+Basement current volume: 50
+
+$ squeezeboxCommand.pl -vol=+5
+Basement new volume: 55
+
+$ squeezeboxCommand.pl -vol 42
+Basement new volume: 42
+
+$ squeezeboxCommand.pl -mi
+Basement: /music/e/Eric\ Jerardi\ Band/Restless/08.\ Kaboom.mp3
+title:    Kaboom
+artist:   Eric Jerardi Band
+album:    Restless
+genre:    Blues
+year:     2007
+track:    08/14
+time:     2:34
+vbr:      yes
+encoder:  LAME3.99r
+version:  ID3v2.3.0
+bitrate:  261
+```
