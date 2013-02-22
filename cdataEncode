@@ -1,0 +1,17 @@
+#!/usr/bin/env perl
+
+######################################################################
+# Encode the input XML as CDATA, handling nested CDATA statements
+#
+sub cdataEncode {
+    my $xml = shift;
+
+    if ($xml =~ /]]>/) {
+        my($pre,$post) = $xml =~ /^(.*]])(>.*)$/s;
+        return cdataEncode($pre) . cdataEncode($post);
+    }
+    return '<![CDATA[' . $xml . ']]>';
+}
+
+$/ = undef;
+print cdataEncode(<>), "\n";
