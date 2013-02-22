@@ -132,7 +132,7 @@ sub usage {
     print STDERR "\t-field range           column # or range\n";
     print STDERR "\t-col STR               string matching column label in the stats file\n";
     print STDERR "\t-re                    treat -col STR as regular expression (default)\n";
-    print STDERR "\t-label                 output the column label\n";
+    print STDERR "\t-label                 output the column label (default)\n";
     print STDERR "\t-delim delim           delimiter to split fields on (defaults to tab)\n";
     print STDERR "\t-outdelim delim        output delimiter (defaults to delim) [use '\\t' for tab]\n";
     print STDERR "\t-preserve              output selected columns in original statfile order\n";
