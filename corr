@@ -1,0 +1,74 @@
+#!/usr/bin/env perl
+
+use strict;
+use open qw/:std :encoding(UTF-8)/;
+use feature 'unicode_strings';
+
+#
+# Reads 2 columns, skipping non-numerics and outputs the
+# Pearson Product Moment Correlation Coefficient.
+#
+# dwf -- initial
+# Tue Feb 25 14:51:35 MST 2003
+#
+########################################################################
+#
+#          __
+#          \       _         _
+#          / ( x - x ) ( y - y )
+#          --
+#  r = -----------------------------------
+#        -------------------------------
+#        | __              __
+#        | \       _  2    \       _  2
+#        | / ( x - x )     / ( y - y )
+#        | --              --
+#       \|
+#
+
+
+my (@a, @b);
+
+while (<>) {
+    my @flds = split;
+    if (isNumber($flds[0]) && isNumber($flds[1])) {
+        push @a, $flds[0];
+        push @b, $flds[1];
+    }
+}
+
+print "N = ",scalar(@a),", r = ", correlate(\@a, \@b), "\n";
+exit 0;
+
+########################################################################
+
+sub correlate {
+    my ($x, $y) = @_;
+    my ($t1, $t2, $mx, $my, $Sxy, $Sxx, $Syy);
+
+    die "correlate: array lengths unequal\n" if @$x != @$y;
+
+    $Sxy = $Sxx = $Syy = $mx = $my = 0;
+
+    # compute the means
+    map { $mx += $_ } @$x;
+    map { $my += $_ } @$y;
+    $mx /= @$x;
+    $my /= @$y;
+
+    for (my $i=0; $i<@$x; ++$i) {
+        $t1 = $x->[$i] - $mx;
+        $t2 = $y->[$i] - $my;
+        $Sxy += $t1 * $t2;
+        $Sxx += $t1 * $t1;
+        $Syy += $t2 * $t2;
+    }
+
+    return $Sxy / sqrt($Sxx * $Syy);
+}
+
+########################################################################
+
+sub isNumber {
+    return shift =~ /^([+-]?)(?=\d|\.\d)\d*(\.\d*)?([Ee]([+-]?\d+))?$/;
+}
