@@ -8,3 +8,7 @@ display a pretty-printed album style summary from a set of files
 
 Reads 2 columns, skipping non-numerics and outputs the
 Pearson Product Moment Correlation Coefficient
+
+## cdataEncode - XML CDATA Encoder
+
+Encode the input XML as CDATA, handling nested CDATA statements
