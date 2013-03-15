@@ -169,6 +169,8 @@ sub clear_cmd {
     sendcmd($sq->{sock}, $sq->{id} . " playlist clear");
 }
 
+################################################################
+
 sub play_cmd {
     my ($sq, $item) = @_;
     if (@$item) {
@@ -176,6 +178,8 @@ sub play_cmd {
         add_cmd($sq, $item);
     }
 }
+
+################################################################
 
 sub add_cmd {
     my ($sq, $item) = @_;
@@ -188,6 +192,8 @@ sub add_cmd {
     }
     sendcmd($sq->{sock}, $sq->{id} . " play");
 }
+
+################################################################
 
 sub random_cmd {
     my ($sq, $genres, $n) = @_;
