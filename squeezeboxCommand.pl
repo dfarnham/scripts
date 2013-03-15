@@ -4,6 +4,7 @@
 # Squeezebox command line utilities
 
 use strict;
+use FileHandle;
 use IO::Socket::INET;
 use URI::Escape;
 use File::Basename;
@@ -17,8 +18,9 @@ use feature 'unicode_strings';
 my $PHYSICAL_MUSIC_LOCATION = '/Volumes/EMusic/Songs';
 my $LOGICAL_MUSIC_LOCATION = '/music';
 
-my(@optAdd, @optPlay, $optNext, $optList, $optPause, $optPlayers,
-   $optPower, $optInfo, $optVolume, $optID, $optMI, $optHelp);
+my(@optAdd, @optPlay, $optNext, $optList, $optRandom, $optSize, $optPause, $optPlayers,
+   $optPower, $optInfo, $optVolume, $optClear, $optID, $optMI, $optHelp);
+$optSize = 10;
 $optID = 0;
 $optVolume = undef;
 $optPower = undef;
@@ -26,11 +28,14 @@ GetOptions('add=s{,}'  => \@optAdd,
            'play=s{,}' => \@optPlay,
            'next:1'    => \$optNext,
            'list'      => \$optList,
+           'random=s'  => \$optRandom,
+           'size=i'    => \$optSize,
            'pause'     => \$optPause,
            'players'   => \$optPlayers,
            'power:s'   => \$optPower,
            'info'      => \$optInfo,
            'volume:s'  => \$optVolume,
+           'clear'     => \$optClear,
            'id=s'      => \$optID,
            'mi'        => \$optMI,
            'help'      => \$optHelp) or die usage();
@@ -55,6 +60,10 @@ if ($playerID eq "") {
 my ($playerName) = sendcmd($socket, "player name $playerID ?") =~ /^player name $playerID (.*)/;
 my $PLR = { sock => $socket, id => $playerID, name => $playerName };
 
+
+if (defined $optClear) {
+    clear_cmd($PLR);
+}
 
 if ($optNext) {
     my $result = next_cmd($PLR, $optNext);
@@ -87,6 +96,9 @@ if ($optNext) {
     print list_cmd($PLR);
 } elsif (@optAdd) {
     add_cmd($PLR, \@optAdd);
+    print list_cmd($PLR);
+} elsif ($optRandom) {
+    random_cmd($PLR, $optRandom, $optSize);
     print list_cmd($PLR);
 } elsif ($optMI) {
     my $path = sendcmd($PLR->{sock}, $PLR->{id} . " path ?");
@@ -152,10 +164,15 @@ sub library_cmd {
 
 ################################################################
 
+sub clear_cmd {
+    my $sq  = shift;
+    sendcmd($sq->{sock}, $sq->{id} . " playlist clear");
+}
+
 sub play_cmd {
     my ($sq, $item) = @_;
     if (@$item) {
-        sendcmd($sq->{sock}, $sq->{id} . " playlist clear");
+        clear_cmd($sq);
         add_cmd($sq, $item);
     }
 }
@@ -165,10 +182,32 @@ sub add_cmd {
     foreach my $f (@$item) {
         my $path = abs_path($f);
         $path =~ s,^$PHYSICAL_MUSIC_LOCATION,$LOGICAL_MUSIC_LOCATION,;
+        next unless -f $path;
         $path = uri_escape_utf8($path);
         sendcmd($sq->{sock}, $sq->{id} . " playlist add $path");
     }
     sendcmd($sq->{sock}, $sq->{id} . " play");
+}
+
+sub random_cmd {
+    my ($sq, $genres, $n) = @_;
+    $genres =~ s/:/','/g;
+    $genres = "'" . $genres . "'";
+    my $cmd = "mysql -s -u slimserver slimserver -e \"
+                  SELECT url FROM tracks
+                    WHERE id IN (SELECT track FROM genre_track
+                      WHERE genre IN (SELECT id FROM genres
+                        WHERE name IN ($genres)))
+                    ORDER BY RAND() LIMIT $n\"";
+    my @items;
+    my $fh = new FileHandle("$cmd |") or die "Can't execute MySQL cmd\n";
+    while (my $track = $fh->getline()) {
+        if ($track =~ m,^file://(.*),) {
+            push(@items, uri_unescape($1));
+        }
+    }
+    $fh->close();
+    add_cmd($sq, \@items);
 }
 
 ################################################################
@@ -296,6 +335,7 @@ sub usage {
     print STDERR "  cmd:\n";
     print STDERR "    players                -- show information on known players\n";
     print STDERR "    info                   -- show summary of the music library and players\n";
+    print STDERR "    clear                  -- clear current playlist\n";
     print STDERR "    add file|dir [...]     -- add content to the current playlist\n";
     print STDERR "    pl(ay) file|dir [...]  -- clear current playlist, then add content\n";
     print STDERR "    pa(use)                -- pause toggle\n";
@@ -303,6 +343,8 @@ sub usage {
     print STDERR "    list                   -- show song/album/artist in the current playlist\n";
     print STDERR "    n(ext) [-#|+#]         -- jump +/- in playlist, default is +1\n";
     print STDERR "    v(olume) [-#|+#|#]     -- volume query, +/- adjust, or set\n";
+    print STDERR "    r(andom) genre1:genre2 -- add random songs of type genre, default is 10 songs\n";
+    print STDERR "    s(ize) #               -- size of random selection, default is 10\n";
     print STDERR "    mi                     -- run external \"mi\" utility on the current music file\n";
     exit 1;
 }
