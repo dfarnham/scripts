@@ -18,9 +18,8 @@ use feature 'unicode_strings';
 my $PHYSICAL_MUSIC_LOCATION = '/Volumes/EMusic/Songs';
 my $LOGICAL_MUSIC_LOCATION = '/music';
 
-my(@optAdd, @optPlay, $optNext, $optList, $optRandom, $optSize, $optPause, $optPlayers,
+my(@optAdd, @optPlay, $optNext, $optList, $optRandom, $optPause, $optPlayers,
    $optPower, $optInfo, $optVolume, $optClear, $optID, $optMI, $optHelp);
-$optSize = 10;
 $optID = 0;
 $optVolume = undef;
 $optPower = undef;
@@ -29,7 +28,6 @@ GetOptions('add=s{,}'  => \@optAdd,
            'next:1'    => \$optNext,
            'list'      => \$optList,
            'random=s'  => \$optRandom,
-           'size=i'    => \$optSize,
            'pause'     => \$optPause,
            'players'   => \$optPlayers,
            'power:s'   => \$optPower,
@@ -98,7 +96,7 @@ if ($optNext) {
     add_cmd($PLR, \@optAdd);
     print list_cmd($PLR);
 } elsif ($optRandom) {
-    random_cmd($PLR, $optRandom, $optSize);
+    random_cmd($PLR, $optRandom);
     print list_cmd($PLR);
 } elsif ($optMI) {
     my $path = sendcmd($PLR->{sock}, $PLR->{id} . " path ?");
@@ -173,9 +171,22 @@ sub clear_cmd {
 
 sub play_cmd {
     my ($sq, $item) = @_;
-    if (@$item) {
+
+    my $musicFileRE = qr/\.(?:mp3|m4a|ogg|flac|wma)$/;
+    my @files;
+    foreach my $f (@$item) {
+        if (-d $f) {
+            opendir(my $dh, $f) or die "Can't opendir $f: $!";
+            push(@files, map { $f . '/' . $_ } grep { /$musicFileRE/ } readdir($dh));
+            closedir($dh);
+        } else {
+            push(@files, $f);
+        }
+    }
+
+    if (@files) {
         clear_cmd($sq);
-        add_cmd($sq, $item);
+        add_cmd($sq, \@files);
     }
 }
 
@@ -196,12 +207,27 @@ sub add_cmd {
 ################################################################
 
 sub random_cmd {
-    my ($sq, $genres, $n) = @_;
-    $genres =~ s/:/','/g;
-    $genres = "'" . $genres . "'";
+    my ($sq, $expression) = @_;
+
+    my @flds = split(/:/, $expression);
+    my $yearExpr = 'year > 0';
+    my $genres = "'Blues','Rock','Southern Rock'";
+    my $n = 10;
+
+    foreach my $f (@flds) {
+        if ($f =~ /(\|\||\&\&|[=><])/) {
+            $yearExpr = $f;
+        } elsif ($f =~ /genre\p{Space}+(.*)/) {
+            ($genres = $1) =~ s/\p{Space}*,\p{Space}*/','/g;
+            $genres = "'" . $genres . "'";
+        } elsif ($f =~ /limit (\p{N}+)/) {
+            $n = $1;
+        }
+    }
+
     my $cmd = "mysql -s -u slimserver slimserver -e \"
                   SELECT url FROM tracks
-                    WHERE id IN (SELECT track FROM genre_track
+                    WHERE $yearExpr AND id IN (SELECT track FROM genre_track
                       WHERE genre IN (SELECT id FROM genres
                         WHERE name IN ($genres)))
                     ORDER BY RAND() LIMIT $n\"";
@@ -349,8 +375,8 @@ sub usage {
     print STDERR "    list                   -- show song/album/artist in the current playlist\n";
     print STDERR "    n(ext) [-#|+#]         -- jump +/- in playlist, default is +1\n";
     print STDERR "    v(olume) [-#|+#|#]     -- volume query, +/- adjust, or set\n";
-    print STDERR "    r(andom) genre1:genre2 -- add random songs of type genre, default is 10 songs\n";
-    print STDERR "    s(ize) #               -- size of random selection, default is 10\n";
+    print STDERR "    r(andom) expr          -- add random songs per expr (limit,year,genre)\n";
+    print STDERR "      expr example: 'limit 5:year > 2000:genre Blues,Southern Rock'\n";
     print STDERR "    mi                     -- run external \"mi\" utility on the current music file\n";
     exit 1;
 }
