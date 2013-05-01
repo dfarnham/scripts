@@ -8,11 +8,12 @@ use FileHandle;
 use IO::Socket::INET;
 use URI::Escape;
 use File::Basename;
+use Encode;
 use Term::ANSIColor qw/:constants/;
-use Getopt::Long qw(:config auto_abbrev);
-use Cwd qw(abs_path);
+use Getopt::Long qw/:config auto_abbrev/;
+use Cwd qw/abs_path/;
 
-#use open qw/:std :encoding(UTF-8)/;
+use open qw/:std :encoding(UTF-8)/;
 use feature 'unicode_strings';
 
 my $PHYSICAL_MUSIC_LOCATION = '/Volumes/EMusic/Songs';
@@ -120,7 +121,7 @@ sub sendcmd {
     print $socket $cmd . "\n";
     my $response = $socket->getline();
     while ($response =~ /%[0-9A-F]{2}/) {
-        $response = uri_unescape($response);
+        $response = Encode::decode('UTF-8', uri_unescape($response));
     }
     return $response;
 }
@@ -363,7 +364,7 @@ sub list_cmd {
 
 sub usage {
     my $bname = substr($0, rindex($0, "/") + 1);
-    print STDERR "$bname [-player|-id] cmd [args]\n";
+    print STDERR "$bname [-id] cmd [args]\n";
     print STDERR "  cmd:\n";
     print STDERR "    players                -- show information on known players\n";
     print STDERR "    info                   -- show summary of the music library and players\n";
