@@ -21,9 +21,25 @@ my $LOGICAL_MUSIC_LOCATION = '/music';
 
 my(@optAdd, @optPlay, $optNext, $optList, $optRandom, $optPause, $optPlayers,
    $optPower, $optInfo, $optVolume, $optClear, $optID, $optMI, $optHelp);
-$optID = 0;
 $optVolume = undef;
 $optPower = undef;
+$optID = 0;
+
+# check for $HOME/.squeezecommand to set defaults
+# available defaults to set: id
+if (-f "$ENV{HOME}/.squeezecommand") {
+    my $fh = new FileHandle("$ENV{HOME}/.squeezecommand") or die "Can't read ~/.squeezecommand\n";
+    while (my $line = $fh->getline()) {
+        chomp $line;
+        next if $line =~ /^#/;
+        my ($key, $value) = split(' ', $line, 2);
+        if ($key eq 'id') {
+            $optID = $value;
+        }
+    }
+    $fh->close();
+}
+
 GetOptions('add=s{,}'  => \@optAdd,
            'play=s{,}' => \@optPlay,
            'next:1'    => \$optNext,
