@@ -1,5 +1,6 @@
 <a name="mi"/>
 ## pairing.pl - szudzik & cantor
+
 ```
 pairing.pl [-cantor|-szudzik] stdin|file  # -szudzik is default
 
