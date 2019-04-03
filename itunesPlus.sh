@@ -1,5 +1,7 @@
 #!/bin/sh
 
+# System Version: macOS 10.14.4
+# Kernel Version: Darwin 18.5.0
 # Convert wav/aiff/flac to iTunes Plus .m4a
 
 for file in "$@"
