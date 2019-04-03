@@ -1,0 +1,54 @@
+#!/bin/sh
+
+#LAME=/usr/local/lame-3.99.5/bin/lame
+LAME=/usr/local/lame-3.100/bin/lame
+bitrate="--preset extreme"
+
+while :
+do
+    case $1 in
+    -128)
+        shift
+        bitrate="-b 128 -m s "
+        ;;
+    -256)
+        shift
+        bitrate="-b 256 -m s "
+        ;;
+    -320)
+        shift
+        bitrate="-b 320 -m s "
+        ;;
+    *)
+        break
+    esac
+done
+
+for file in "$@"
+do
+    ext=`echo "$file" | sed 's/.*\.//'`
+    if [ $ext = 'wav' -o $ext = 'aiff' -o $ext = 'm4a' -o $ext = 'ogg' -o $ext = 'flac' ]; then
+        mp3=`dirname "$file"`/`basename "$file" $ext`mp3
+
+        if [ $ext = 'm4a' ]; then
+            wav=`dirname "$file"`/`basename "$file" $ext`wav
+            echo afconvert -d LEI16@44100 -f WAVE "$file" "$wav"
+            afconvert -d LEI16@44100 -f WAVE "$file" "$wav"
+            file="$wav"
+        elif [ $ext = 'ogg' ]; then
+            wav=`dirname "$file"`/`basename "$file" $ext`wav
+            oggdec -o "$wav" "$file"
+            file="$wav"
+        elif [ $ext = 'flac' ]; then
+            wav=`dirname "$file"`/`basename "$file" $ext`wav
+            flac -ds "$file"
+            file="$wav"
+        fi
+
+        $LAME --resample 44100 $bitrate "$file" "$mp3"
+
+        if [ $ext = 'm4a' -o $ext = 'ogg' -o $ext = 'flac' ]; then
+            /bin/rm "$file"
+        fi
+    fi
+done
