@@ -1,4 +1,28 @@
 <a name="mi"/>
+## pairing.pl - szudzik & cantor
+```
+pairing.pl [-cantor|-szudzik] stdin|file  # -szudzik is default
+
+Given pairs of input: output the pairing function value (using cantor or szudzik)
+Given single inputs: output the original pairs
+
+Example:
+$ cat /tmp/data
+ 4    5
+ 3    9
+ 12  300
+
+$ pairing.pl /tmp/data
+29
+84
+90012
+
+$ pairing.pl /tmp/data | pairing.pl
+4 5
+3 9
+12 300
+```
+
 ## mi - Music Info
  
 Utility to extract tag information from various music file formats or
