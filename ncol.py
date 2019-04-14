@@ -43,7 +43,7 @@ pad = [max(np.array(lengths).reshape(len(lengths)//cols, cols)[:,i]) for i in ra
 # output original data [blank lines removed: see read_data()] with column padding
 for i in range(len(data)):
     n = i % cols
-    print(data[i], ' ' * (pad[n] - lengths[i] + 1), end = '' if n != cols-1 else '\n')
+    print(data[i], ' ' * (pad[n] - lengths[i]), end = '' if n != cols-1 else '\n')
 
 # finally, output a newline for short data
 if (len(data) % cols):
