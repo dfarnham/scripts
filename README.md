@@ -82,7 +82,7 @@ $ mi --summary /music/a/AC-DC/Volts
  9. It's A Long Way To The Top (If You Wanna Rock 'N' Roll) ... 5:16 
 10. Ride On ................................................... 9:44 
 
-$ mi /music/b/Buddaheads/Howlin\'\ At\ The\ Moon/01.\ Long\ Way\ Down.mp3 
+$ mi "/music/b/Buddaheads/Howlin' At The Moon/01. Long Way Down.mp3" 
 title:    Long Way Down
 artist:   Buddaheads
 album:    Howlin' At The Moon
@@ -95,7 +95,7 @@ encoder:  LAME3.97
 version:  ID3v2.3.0, ID3v1.1
 bitrate:  270
 
-$ mi /music/Loseless/Donna\ The\ Buffalo/Rockin\'\ In\ The\ Weary\ Land/01.\ Tides\ Of\ Time.flac 
+$ mi "/music/Loseless/Donna The Buffalo/Rockin' In The Weary Land/01. Tides Of Time.flac" 
 title:    Tides Of Time
 artist:   Donna The Buffalo
 album:    Rockin' In The Weary Land
@@ -106,7 +106,7 @@ time:     3:27
 encoder:  flac --best
 bitrate:  16 bits per sample @ 44100Hz
 
-$ mi /music/p/Paul\ Reddick\ \&\ The\ Sidemen/Rattlebag/13.\ Smokehouse.ogg 
+$ mi "/music/p/Paul Reddick & The Sidemen/Rattlebag/13. Smokehouse.ogg "
 title:    Smokehouse
 artist:   Paul Reddick & The Sidemen
 album:    Rattlebag
@@ -126,7 +126,7 @@ Pearson Product Moment Correlation Coefficient
 Examples
 ------------
 ```
-$ cat /tmp/data  # mixture of text/data and differing whitespace
+$ cat data  # mixture of text/data and differing whitespace
 Col1  Col2
 ----  ----
 1 3
