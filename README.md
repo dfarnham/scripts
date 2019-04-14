@@ -730,3 +730,94 @@ binary    = += -= *= /= %= >>= <<= &= ^= |=             r -> l
 binary    ,                                             l -> r
 --------------------------------------------------------------
 ```
+
+## Procrustes -- Finding a rotation matrix
+
+```
+# Finding a rotation matrix: Orthogonal Procrustes problem
+# http://en.wikipedia.org/wiki/Orthogonal_Procrustes_problem
+#
+# This problem was originally solved by Peter Schonemann in a 1964 thesis.
+#
+# This problem is equivalent to finding the nearest orthogonal matrix to a given matrix (M = A' * B).
+# To find this orthogonal matrix R, one uses the singular value decomposition
+#
+# M=U*S*V' to write R=U*V'
+#
+##########################################
+# Example demonstrating the basic concept:
+#
+#  # Define matrix A
+#  A = matrix(c(10,4,8,  -2,3,7,  11,-3,12), nrow = 3, ncol = 3, byrow = TRUE)
+#  > A
+#            [,1] [,2] [,3]
+#       [1,]   10    4    8
+#       [2,]   -2    3    7
+#       [3,]   11   -3   12
+#
+#
+#
+#              Rotation matricies around fixed axis (x, y, z)
+#
+#         1    0      0              cos(r) 0 -sin(r)             cos(r) sin(r) 0
+#  X(r) = 0  cos(r) sin(r)    Y(r) =   0    1    0        Z(r) = -sin(r) cos(r) 0
+#         0 -sin(r) cos(r)           sin(r) 0  cos(r)               0      0    1
+#
+#
+#
+#        # Define an arbitrary rotation matrix (the one we'll solve for later)
+#
+#  30 degree (counter clockwise) rotation around the X axis
+#  R = matrix(c(1,0,0, 0,cos(pi/6),sin(pi/6), 0,-sin(pi/6),cos(pi/6)), nrow = 3, ncol = 3, byrow = TRUE)
+#
+#  90 degree (counter clockwise) rotation around the Z axis
+#  R = matrix(c(0,1,0,  -1,0,0,  0,0,1), nrow = 3, ncol = 3, byrow = TRUE)
+#
+#  > R
+#            [,1] [,2] [,3]
+#       [1,]    0    1    0
+#       [2,]   -1    0    0
+#       [3,]    0    0    1
+#
+#
+#  # Define matrix B as a rotation of A
+#  > B = A %*% R
+#  > B
+#            [,1] [,2] [,3]
+#       [1,]   -4   10    8
+#       [2,]   -3   -2    7
+#       [3,]    3   11   12
+#
+#
+#  # Solve for R using svd
+#  s = svd(t(A) %*% B)
+#  > s$u
+#                [,1]         [,2]         [,3]
+#  [1,] -0.6770274541 -0.622683461  0.392299800
+#  [2,] -0.0324477139  0.557783557  0.829351946
+#  [3,] -0.7352421181  0.548764805 -0.397839436
+#
+#  > s$v
+#                [,1]         [,2]         [,3]
+#  [1,]  0.0324477139 -0.557783557 -0.829351946
+#  [2,] -0.6770274541 -0.622683461  0.392299800
+#  [3,] -0.7352421181  0.548764805 -0.397839436
+#
+#  > s$d
+#  [1] 440.0730908  49.6087753  26.3181339
+#
+#
+#  > R2 = s$u %*% t(s$v)
+#  > R2
+#                  [,1]            [,2]           [,3]
+#  [1,] -2.33146835e-15  1.00000000e+00 1.38777878e-16
+#  [2,] -1.00000000e+00 -2.27595720e-15 2.44249065e-15
+#  [3,]  2.33146835e-15  3.60822483e-16 1.00000000e+00
+#
+#  > round(R2, digits=9)
+#       [,1] [,2] [,3]
+#  [1,]    0    1    0
+#  [2,]   -1    0    0
+#  [3,]    0    0    1
+##########################################
+```
