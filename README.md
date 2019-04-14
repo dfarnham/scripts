@@ -28,6 +28,8 @@ $ pairing.pl /tmp/data | pairing.pl
 
 ## ncol.py - Align data into padded columns
 ```
+ncol.py cols [file|stdin]
+
 $ cat data
 one
 two
