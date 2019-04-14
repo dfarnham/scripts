@@ -705,3 +705,28 @@ hexbytes [-nmrs] file|stdin
 ## mp3enc -- Front end to lame handling wav, aiff, m4a, ogg, flac
 
 ## itunesPlus -- afconvert wav, aiff, flac with appropriate flags
+
+## prec -- C operator precedence/associativity chart
+
+```
+          C operator precedence/associativity chart
+
+Arity       Operator                                    Assoc
+--------------------------------------------------------------
+mixed     ()  []  ->  .                                 l -> r
+unary     !   ~   ++  --  -  (type)  *  &  sizeof       r -> l
+binary    *   /   %                                     l -> r
+binary    +   -                                         l -> r
+binary    <<  >>                                        l -> r
+binary    <   <=  >   >=                                l -> r
+binary    ==  !=                                        l -> r
+binary    &                                             l -> r
+binary    ^                                             l -> r
+binary    |                                             l -> r
+binary    &&                                            l -> r
+binary    ||                                            l -> r
+ternary   ?:                                            r -> l
+binary    = += -= *= /= %= >>= <<= &= ^= |=             r -> l
+binary    ,                                             l -> r
+--------------------------------------------------------------
+```
