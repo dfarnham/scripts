@@ -26,6 +26,38 @@ $ pairing.pl /tmp/data | pairing.pl
 12 300
 ```
 
+## ncol.py - Align data into padded columns
+```
+$ cat data
+one
+two
+three
+four
+five
+six
+seven
+eight
+nine
+ten
+
+$ ncol.py 3 data
+one    two    three
+four   five   six
+seven  eight  nine
+ten
+
+$ ncol.py 5 < data
+one  two    three  four  five
+six  seven  eight  nine  ten
+
+$ series 1 30 | ncol.py 7
+1   2   3   4   5   6   7
+8   9   10  11  12  13  14
+15  16  17  18  19  20  21
+22  23  24  25  26  27  28
+29  30
+```
+
 ## mi - Music Info
  
 Utility to extract tag information from various music file formats or
