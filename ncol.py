@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import sys
-import numpy as np
+#import numpy as np
 
 if len(sys.argv) < 2:
     print(f"Usage: {sys.argv[0]} cols [file|stdin]")
@@ -31,14 +31,17 @@ else:
 #           pad[n] = len(data[i])
 #
 # could also run a max function over the length of the strings in each column.
-# one solution is to reshape after adding the appropriate number of [0] elements.
+# one solution is to reshape() after adding the appropriate number of [0] elements.
 
 # gather up the string lengths and add enough [0]'s to satisfy numpy.reshape()
 lengths = [len(str) for str in data] +   [0] * (cols - len(data) % cols)
 
 # run a max function over each column after reshape()
 # creating a list containing the max string length for each column
-pad = [max(np.array(lengths).reshape(len(lengths)//cols, cols)[:,i]) for i in range(cols)]
+#
+# equivalently, the zip() pairings can act as the transpose avoiding the use of numpy.reshape()
+#pad = [max(np.array(lengths).reshape(len(lengths)//cols, cols)[:,i]) for i in range(cols)]
+pad = [max(lst) for lst in zip(*[lengths[i:cols+i] for i in range(0, len(lengths), cols)])]
 
 # output original data [blank lines removed: see read_data()] with column padding
 for i in range(len(data)):
