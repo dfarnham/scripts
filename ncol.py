@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 
 import sys
+import math
 #import numpy as np
 
+def read_data(fh):
+    """Return a list of lines read from an open file handle. Omitting blank lines."""
+    return [ line.strip() for line in fh if len(line.strip()) > 0 ]
+
+
 if len(sys.argv) < 2:
-    print(f"Usage: {sys.argv[0]} cols [file|stdin]")
+    print(f"Usage: {sys.argv[0]} sq|cols [file|stdin]")
     exit(1)
 
-cols = int(sys.argv[1])
-
-
-def read_data(fh):
-    """Return a list of lines read from an open file handle. Skip blank lines."""
-    return [ line.strip() for line in fh if len(line.strip()) > 0 ]
 
 # read input data
 if len(sys.argv) == 2:
@@ -21,6 +21,8 @@ else:
     with open(sys.argv[2], "r") as fp:
         data = read_data(fp)
 
+# cols of 'sq' requests square output, otherwise use the specified column number
+cols = int(math.sqrt(len(data))) if sys.argv[1] == 'sq' else int(sys.argv[1])
 
 # find the longest string in each column for use in padded output
 # one possible straight forward and simple algorithm:
@@ -36,8 +38,8 @@ else:
 # gather up the string lengths and add enough [0]'s to satisfy numpy.reshape()
 lengths = [len(str) for str in data] +   [0] * (cols - len(data) % cols)
 
-# run a max function over each column after reshape()
-# creating a list containing the max string length for each column
+# run a max function over each column after reshape() creating
+# a list containing the max string length for each column
 #
 # equivalently, the zip() pairings can act as the transpose avoiding the use of numpy.reshape()
 #pad = [max(np.array(lengths).reshape(len(lengths)//cols, cols)[:,i]) for i in range(cols)]
@@ -49,5 +51,4 @@ for i in range(len(data)):
     print(data[i], ' ' * (pad[n] - lengths[i]), end = '' if n != cols-1 else '\n')
 
 # finally, output a newline for short data
-if (len(data) % cols):
-    print("")
+if (len(data) % cols): print("")
