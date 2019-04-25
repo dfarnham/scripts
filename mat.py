@@ -10,6 +10,7 @@ parser.add_argument("-c", "--cols", type=int, help="number of columns")
 parser.add_argument("-r", "--rows", type=int, help="number of rows")
 parser.add_argument("-p", "--pad",  type=int, help="number of additional spaces between row elements")
 parser.add_argument("-s", "--square", action="store_true", help="square output")
+parser.add_argument("-j", "--justify", action="store_true", help="right justification, default is left justification")
 parser.add_argument("file", nargs='?', type=argparse.FileType("r"), default=sys.stdin, help="file|stdin")
 args = parser.parse_args()
 
@@ -64,7 +65,11 @@ additional_pad = args.pad if args.pad else 0
 # output original data [blank lines removed: see read_data()] with column padding
 for i in range(len(data)):
     n = i % cols
-    print(data[i], ' ' * (pad[n] - lengths[i] + additional_pad), end = '' if n != cols-1 else '\n')
+    j = 0
+    if args.justify:
+        j = pad[n] - lengths[i]
+        print(' ' * j, sep='', end='')
+    print(data[i], ' ' * (pad[n] - lengths[i] - j + additional_pad), end = '' if n != cols-1 else '\n')
 
 # finally, output a newline for short data
 if (len(data) % cols): print("")
