@@ -29,7 +29,7 @@ $ pairing.pl /tmp/data | pairing.pl
 
 ## mat.py - Align data into matrix like format with columns aligned
 ```
-usage: mat.py [-h] [-c COLS] [-r ROWS] [-p PAD] [-s] [file]
+usage: mat.py [-h] [-c COLS] [-r ROWS] [-p PAD] [-s] [-j] [file]
 
 positional arguments:
   file                  file|stdin
@@ -39,7 +39,8 @@ optional arguments:
   -c COLS, --cols COLS  number of columns
   -r ROWS, --rows ROWS  number of rows
   -p PAD, --pad PAD     number of additional spaces between row elements
-  -s, --square          square output (default behavior)
+  -s, --square          square output
+  -j, --justify         right justification, default is left justification
 
 $ cat data
 one
