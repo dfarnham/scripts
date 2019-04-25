@@ -27,9 +27,19 @@ $ pairing.pl /tmp/data | pairing.pl
 12 300
 ```
 
-## ncol.py - Align data into padded columns
+## mat.py - Align data into matrix like format
 ```
-ncol.py cols [file|stdin]
+usage: mat.py [-h] [-c COLS] [-r ROWS] [-p PAD] [-s] [file]
+
+positional arguments:
+  file                  file|stdin
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -c COLS, --cols COLS  number of columns
+  -r ROWS, --rows ROWS  number of rows
+  -p PAD, --pad PAD     number of additional spaces between row elements
+  -s, --square          square output
 
 $ cat data
 one
@@ -43,17 +53,22 @@ eight
 nine
 ten
 
-$ ncol.py 3 data
-one    two    three
-four   five   six
-seven  eight  nine
+$ mat.py data
+one   two   three
+four  five  six
+seven eight nine
 ten
 
-$ ncol.py 5 < data
-one  two    three  four  five
-six  seven  eight  nine  ten
+$ mat.py -r 3 data
+one  two three four
+five six seven eight
+nine ten
 
-$ series 1 30 | ncol.py 7
+$ mat.py -c 5 -p 3 < data
+one    two      three    four    five
+six    seven    eight    nine    ten
+
+$ series 1 30 | mat.py -p 1 -c 7
 1   2   3   4   5   6   7
 8   9   10  11  12  13  14
 15  16  17  18  19  20  21
