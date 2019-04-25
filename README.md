@@ -27,7 +27,7 @@ $ pairing.pl /tmp/data | pairing.pl
 12 300
 ```
 
-## mat.py - Align data into matrix like format
+## mat.py - Align data into matrix like format with columns aligned
 ```
 usage: mat.py [-h] [-c COLS] [-r ROWS] [-p PAD] [-s] [file]
 
