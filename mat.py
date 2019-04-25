@@ -72,4 +72,4 @@ for i in range(len(data)):
     print(data[i], ' ' * (pad[n] - lengths[i] - j + additional_pad), end = '' if n != cols-1 else '\n')
 
 # finally, output a newline for short data
-if (len(data) % cols): print("")
+if (len(data) % cols): print('')
