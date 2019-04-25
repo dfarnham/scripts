@@ -39,7 +39,7 @@ optional arguments:
   -c COLS, --cols COLS  number of columns
   -r ROWS, --rows ROWS  number of rows
   -p PAD, --pad PAD     number of additional spaces between row elements
-  -s, --square          square output
+  -s, --square          square output (default behavior)
 
 $ cat data
 one
@@ -53,22 +53,22 @@ eight
 nine
 ten
 
-$ mat.py data
+$ mat.py data                          # default is an attempt to square
 one   two   three
 four  five  six
 seven eight nine
 ten
 
-$ mat.py -r 3 data
+$ mat.py -r 3 data                     # 3 rows
 one  two three four
 five six seven eight
 nine ten
 
-$ mat.py -c 5 -p 3 < data
+$ mat.py -c 5 -p 3 < data              # 5 columns with 3 additional spaces added
 one    two      three    four    five
 six    seven    eight    nine    ten
 
-$ series 1 30 | mat.py -p 1 -c 7
+$ series 1 30 | mat.py -p 1 -c 7       # 7 columns, 1 additional space
 1   2   3   4   5   6   7
 8   9   10  11  12  13  14
 15  16  17  18  19  20  21
