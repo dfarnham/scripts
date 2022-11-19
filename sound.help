@@ -111,6 +111,8 @@ Converting flac to alac:
     flac -d file.flac
     afconvert -d alac file.wav file.m4a
 
+    for f in *.flac; do ffmpeg -loglevel 0 -i "$f" -acodec alac "${f%.flac}.m4a"; done
+
 ---------------------------------------------------------------------
 
 Converting m4a to WAV:
@@ -144,6 +146,7 @@ Converting mp3 to WAV:
    notlame --decode file.mp3 file.wav
             or
    afconvert -d LEI16 -f WAVE file.mp3 file.wav
+   for f in *.mp3 ; do afconvert -d LEI16 -f WAVE "$f" "${f%.mp3}.wav"; done
 
 ---------------------------------------------------------------------
 
@@ -162,6 +165,9 @@ faac -q 120 -c 20000 -w file.wav       # encodes to file.m4a
 On a Mac (intermediate caf file):
 afconvert file.wav intermediate.caf -d 0 -f caff --soundcheck-generate
 afconvert intermediate.caf -d aac -f m4af -u pgcm 2 --soundcheck-read -b 256000 -q 127 -s 2 file.m4a
+            or
+for f in *.wav; do afconvert "$f" intermediate.caf -d 0 -f caff --soundcheck-generate && afconvert intermediate.caf -d aac -f m4af -u pgcm 2 --soundcheck-read -b 256000 -q 127 -s 2 "${f%.wav}.m4a"; done
+
 
 ---------------------------------------------------------------------
 
@@ -170,6 +176,12 @@ Converting WAV to mp3:
 notlame -h -V 0 -b 112 file.wav file.mp3
            or
 xingmp3enc -B 192 file.wav
+
+---------------------------------------------------------------------
+
+Converting WAV to alac:
+
+for f in *.wav; do afconvert -d alac "$f" "${f%.wav}.m4a"; done
 
 ---------------------------------------------------------------------
 
@@ -374,8 +386,18 @@ eyeD3 --text-frame=TCMP:1
 flac to alac
 for f in *.flac; do ffmpeg -loglevel 0 -i "$f" -acodec alac "${f%.flac}.m4a"; done
 
+flac -d file.flac
+afconvert -d alac file.wav file.m4a
+
 ---------------------------------------------------------------------
 
 remove all m4a tags
 for f in *.m4a; do MP4Box -itags all=NULL "$f"; done
 
+---------------------------------------------------------------------
+
+ffmpeg -i file.wav -acodec pcm_s16le -ac 1 -ar 16000 out.wav
+
+---------------------------------------------------------------------
+
+for d in `series 1 5`; do cd Disc$d; ren "s/^/$d-/" *.m4a; cd ..; done

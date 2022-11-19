@@ -190,58 +190,6 @@ $ echo 'hello world' | cdataEncode | cdataEncode
 ]]>
 ```
 
-## cutcol -- Generalized Column Cutter
-
-Cut columns in various ways
-
-```
-cutcol.pl -statfile file.stats -field range -col RE [-delim str] [-outdelim str] [-(no)re] [-(no)label] [-preserve] [-quiet]
- -statfile file.stats   stats file
-	-field range           column # or range
-	-col STR               string matching column label in the stats file
-	-re                    treat -col STR as regular expression (default)
-	-label                 output the column label
-	-delim delim           delimiter to split fields on (defaults to tab)
-	-outdelim delim        output delimiter (defaults to delim) [use '\t' for tab]
-	-preserve              output selected columns in original statfile order
-	-quiet                 die silently on error
-Examples:
-
-	Given the following tab separated input in file 'test.stats':
-
-		grade Predicted id
-		2     3         1
-		1     2         2
-		1     1         3
-
-	# output columns 'grade' and 'Predicted'
-	cutcol.pl -col grade -col Predicted test.stats
-	cutcol.pl -field 1 -field 2 test.stats
-
-	# output columns 'grade' and 'Predicted'
-	cutcol.pl -col gr -col Pre test.stats
-	cutcol.pl -f 1-2 test.stats
-
-	# output columns 'Predicted' and 'grade'
-	cutcol.pl -col 'ed$' -col 'de$' test.stats
-	cutcol.pl -f 2 -f 1 test.stats
-
-	# output columns 'Predicted' and 'id'
-	cutcol.pl -col '(?i)pre' -col 'id' test.stats
-
-	# output all columns comma separated
-	cutcol.pl -col . -outdelim=, test.stats
-
-	# output columns 'id' and 'grade'
-	cutcol.pl -col id -col grade test.stats
-
-	# output columns 'grade' and 'id'
-	cutcol.pl -preserve -col id -col grade test.stats
-
-	# output all columns comma separated, then convert back to tab
-	cutcol.pl -col=. -outdelim=, -statfile=test.stats | cutcol.pl -delim=, -col=. -outdelim='\t' -
- ```
-
 ## squeezeCommand -- Command Line Squeezebox Controller
 
 Basic command line control of a Slimserver Squeezebox (play, pause, power, info, list, etc.)
